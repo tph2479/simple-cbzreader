@@ -19,9 +19,12 @@ app.on("ready", () => {
             contextIsolation: false,
         },
     });
-
-    mainWindow.setMenu(null);
+    
     mainWindow.loadFile("index.html");
+    mainWindow.setMenu(null);
+    mainWindow.webContents.insertCSS(`
+        body::-webkit-scrollbar { display: none; }
+    `);
 
     const ret = globalShortcut.register('q', () => {
         app.quit();
