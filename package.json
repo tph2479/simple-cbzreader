@@ -1,0 +1,39 @@
+{
+  "name": "simple-cbzreader",
+  "version": "0.0.1",
+  "private": true,
+  "description": "barebone cbzreader",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --x64"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "yauzl": "^3.2.0"
+  },
+  "build": {
+    "appId": "me.local.cbzreader",
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false,
+      "artifactName": "${name}-${version}-${arch}.${ext}"
+    },
+    "files": [
+      "icon.ico",
+      "main.js",
+      "index.html",
+      "render.js",
+      "node_modules/yauzl/**/*"
+    ],
+    "icon": "icon.ico"
+  }
+}

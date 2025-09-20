@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>CBZ Reader</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    #container {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    img {
+      width: 100%;
+      display: block;
+    }
+
+    #nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      width: auto;
+      justify-content: center;
+      padding: 15px 20px;
+      background: rgba(46, 46, 46, 0.76);
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+
+    #nav-bar.has-file {
+      opacity: 0;
+    }
+
+    #nav-bar.has-file:hover {
+      opacity: 1;
+    }
+
+    @media (max-width: 800px) {
+      #nav-bar {
+        left: 0;
+        right: 0;
+        border-radius: 0 0 0 0;
+      }
+    }
+
+    #file-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    #nav-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    #page-counter {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      margin-right: 15px;
+    }
+
+    #progress-bar {
+      flex: 1;
+      height: 4px;
+      background: rgba(135, 135, 135, 0.292);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #progress-fill {
+      height: 100%;
+      background: white;
+      width: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="nav-bar">
+    <div id="file-name"></div>
+    <div id="nav-controls">
+      <div id="page-counter"></div>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+  <div id="container"></div>
+  <script src="render.js"></script>
+</body>
+
+</html>
