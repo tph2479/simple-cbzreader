@@ -37,6 +37,10 @@
       "index.html",
       "render.js",
       "node_modules/yauzl/**/*"
+    ],
+    "extraFiles": [
+      "register.bat",
+      "unregister.bat"
     ]
   }
 }

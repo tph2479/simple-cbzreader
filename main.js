@@ -1,7 +1,56 @@
 const { app, BrowserWindow, ipcMain, globalShortcut } = require("electron");
 const path = require("path");
 const yauzl = require("yauzl");
-const fs = require("fs")
+const fs = require("fs");
+// const os = require("os");
+const { execSync } = require('child_process');
+
+function registerFileAssociation() {
+    try {
+        const exePath = process.execPath.replace(/\\/g, '\\\\');
+
+        const regContent = `Windows Registry Editor Version 5.00\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\.cbz]\r\n` +
+            `@="cbzfile"\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\.cbz\\OpenWithProgids]\r\n` +
+            `"cbzfile"=""\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\cbzfile]\r\n` +
+            `@="CBZ Archive"\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\cbzfile\\shell]\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\cbzfile\\shell\\open]\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\cbzfile\\shell\\open\\command]\r\n` +
+            `@="\\"${exePath}\\" \\"%1\\""\r\n`;
+
+        // Save to current directory instead of temp
+        const regFile = path.join(path.dirname(process.execPath), 'cbz-register.reg');
+        fs.writeFileSync(regFile, regContent, 'utf8');
+
+        // Run registry file
+        execSync(`reg import "${regFile}"`, { stdio: 'inherit' });
+
+        // Clean up
+        fs.unlinkSync(regFile);
+    } catch (error) {
+        console.error('Failed to register file association:', error.message);
+        console.log('Please run as Administrator or use manual registry file.');
+    }
+}
+
+function unregisterFileAssociation() {
+    try {
+        const regContent = `Windows Registry Editor Version 5.00\r\n\r\n` +
+            `[-HKEY_CLASSES_ROOT\\cbzfile]\r\n`;
+
+        const regFile = path.join(path.dirname(process.execPath), 'cbz-unregister.reg');
+        fs.writeFileSync(regFile, regContent, 'utf8');
+
+        execSync(`reg import "${regFile}"`, { stdio: 'inherit' });
+
+        fs.unlinkSync(regFile);
+    } catch (error) {
+        console.error('Failed to unregister:', error.message);
+    }
+}
 
 let mainWindow;
 let imageEntries;
@@ -10,6 +59,18 @@ let rendererReady = false;
 
 app.on("ready", () => {
     const args = process.argv.slice(1);
+    if (args.includes('register') || args.includes('--register')) {
+        registerFileAssociation();
+        app.quit();
+        process.exit(0);
+    }
+
+    if (args.includes('unregister') || args.includes('--unregister')) {
+        unregisterFileAssociation();
+        app.quit();
+        process.exit(0);
+    }
+
     const cbzPath = args.find(a => a.endsWith(".cbz"));
 
     mainWindow = new BrowserWindow({
@@ -19,7 +80,7 @@ app.on("ready", () => {
             contextIsolation: false,
         },
     });
-    
+
     mainWindow.loadFile("index.html");
     mainWindow.setMenu(null);
     mainWindow.webContents.insertCSS(`
