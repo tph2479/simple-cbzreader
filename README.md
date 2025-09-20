@@ -5,7 +5,7 @@ Press Q to quit. Supports opening with cmd and drag drop file.
 
 For some reasons the exe file took me 30 seconds to open up. So to build it yourself (much faster):
 
-  1.requre npm
+  1.require npm
   
   2.run **build.bat** if you on windows
 
