@@ -9,7 +9,7 @@
     "dist": "electron-builder --x64"
   },
   "keywords": [],
-  "author": "",
+  "author": "tph",
   "license": "ISC",
   "devDependencies": {
     "electron": "^38.1.2",
@@ -18,14 +18,18 @@
   "dependencies": {
     "yauzl": "^3.2.0"
   },
+  "icon": "icon.ico",
   "build": {
     "appId": "me.local.cbzreader",
-    "asar": true,
     "compression": "maximum",
+    "asar": true,
     "win": {
-      "target": "portable",
-      "signAndEditExecutable": false,
-      "artifactName": "${name}-${version}-${arch}.${ext}"
+      "target": "dir",
+      "artifactName": "${name}-${version}-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "portable": {
+      "requestExecutionLevel": "user"
     },
     "files": [
       "icon.ico",
@@ -33,7 +37,6 @@
       "index.html",
       "render.js",
       "node_modules/yauzl/**/*"
-    ],
-    "icon": "icon.ico"
+    ]
   }
 }

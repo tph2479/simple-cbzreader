@@ -117,6 +117,8 @@ async function getImageEntries(cbzPath) {
     });
 }
 
+// electron is suck
+
 async function loadImageByIndex(cbzPath, entry, index) {
     return new Promise((resolve, reject) => {
         if (!cbzPath) {
