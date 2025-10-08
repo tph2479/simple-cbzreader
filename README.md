@@ -10,3 +10,7 @@ For some reasons the exe file took me 30 seconds to open up. So to build it your
 2.run **register.bat** in **dist/win-unpacked** to register the exe to open cbz files
 
 Likewise, run unregister.bat to remove your program from system.
+
+Changes:
+
+* 2025/10/08: build fix, add support to open avif file, update package.lock
