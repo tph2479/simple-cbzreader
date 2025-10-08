@@ -94,7 +94,7 @@ app.on("ready", () => {
     });
 
     mainWindow.loadFile("index.html");
-    // mainWindow.setMenu(null);
+    mainWindow.setMenu(null);
     mainWindow.webContents.insertCSS(`
         body::-webkit-scrollbar { display: none; }
     `);
@@ -218,8 +218,6 @@ async function loadImageByIndex(cbzPath, entry, index) {
         if (!entry) {
             return reject(new Error("Entry to load is empty"));
         }
-
-        // console.log(entry.fileName);
 
         yauzl.open(cbzPath, { lazyEntries: true }, (err, zipfile) => {
             if (err) return reject(err);

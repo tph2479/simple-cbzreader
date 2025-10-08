@@ -39,9 +39,9 @@ echo Cleaning up...
 del "!FILENAME!"
 
 :install
-set "PATH=%CD%\node;%PATH%"
 
 if exist ".\node\npm.cmd" (
+    set "PATH=%CD%\node;%PATH%"
     echo Using local Node.js installation...
     call ".\node\npm.cmd" install --save-dev electron-builder
     call ".\node\npm.cmd" install
