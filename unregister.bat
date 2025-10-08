@@ -18,12 +18,9 @@ echo Unregistering CBZ file association...
 simple-cbzreader.exe unregister
 
 if %errorLevel% == 0 (
-    echo.
-    echo SUCCESS: CBZ Reader removed from context menu!
+    echo SUCCESS: CBZ, avif Reader removed from context menu!
 ) else (
     echo.
     echo ERROR: Failed to unregister
 )
-
-echo.
 pause

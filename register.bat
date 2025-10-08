@@ -18,11 +18,9 @@ echo Registering CBZ file association...
 simple-cbzreader.exe register
 
 if %errorLevel% == 0 (
-    echo.
-    echo SUCCESS: CBZ file association registered!
+    echo SUCCESS: CBZ, avif file association registered!
     echo You can now right-click .cbz files and select "Open with CBZ Reader"
 ) else (
-    echo.
     echo ERROR: Failed to register file association
 )
 
