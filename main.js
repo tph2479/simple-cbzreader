@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, globalShortcut } = require("electron");
 const path = require("path");
 const yauzl = require("yauzl");
 const fs = require("fs");
-// const os = require("os");
 const { execSync } = require('child_process');
 
 function registerFileAssociation() {
@@ -19,17 +18,27 @@ function registerFileAssociation() {
             `[HKEY_CLASSES_ROOT\\cbzfile\\shell]\r\n\r\n` +
             `[HKEY_CLASSES_ROOT\\cbzfile\\shell\\open]\r\n\r\n` +
             `[HKEY_CLASSES_ROOT\\cbzfile\\shell\\open\\command]\r\n` +
+            `@="\\"${exePath}\\" \\"%1\\""\r\n` +
+            `[HKEY_CLASSES_ROOT\\.avif]\r\n` +
+            `@="aviffile"\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\.avif\\OpenWithProgids]\r\n` +
+            `"aviffile"=""\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\aviffile]\r\n` +
+            `@="AVIF Image"\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\aviffile\\shell]\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\aviffile\\shell\\open]\r\n\r\n` +
+            `[HKEY_CLASSES_ROOT\\aviffile\\shell\\open\\command]\r\n` +
             `@="\\"${exePath}\\" \\"%1\\""\r\n`;
 
         // Save to current directory instead of temp
-        const regFile = path.join(path.dirname(process.execPath), 'cbz-register.reg');
-        fs.writeFileSync(regFile, regContent, 'utf8');
+        const regFile = join(dirname(process.execPath), 'register.reg');
+        writeFileSync(regFile, regContent, 'utf8');
 
         // Run registry file
         execSync(`reg import "${regFile}"`, { stdio: 'inherit' });
 
         // Clean up
-        fs.unlinkSync(regFile);
+        unlinkSync(regFile);
     } catch (error) {
         console.error('Failed to register file association:', error.message);
         console.log('Please run as Administrator or use manual registry file.');
@@ -39,14 +48,16 @@ function registerFileAssociation() {
 function unregisterFileAssociation() {
     try {
         const regContent = `Windows Registry Editor Version 5.00\r\n\r\n` +
-            `[-HKEY_CLASSES_ROOT\\cbzfile]\r\n`;
+            `[-HKEY_CLASSES_ROOT\\cbzfile]\r\n` +
+            `[-HKEY_CLASSES_ROOT\\aviffile]\r\n` +
+            `[-HKEY_CLASSES_ROOT\\.avif]\r\n`;
 
-        const regFile = path.join(path.dirname(process.execPath), 'cbz-unregister.reg');
-        fs.writeFileSync(regFile, regContent, 'utf8');
+        const regFile = join(dirname(process.execPath), 'unregister.reg');
+        writeFileSync(regFile, regContent, 'utf8');
 
         execSync(`reg import "${regFile}"`, { stdio: 'inherit' });
 
-        fs.unlinkSync(regFile);
+        unlinkSync(regFile);
     } catch (error) {
         console.error('Failed to unregister:', error.message);
     }
@@ -54,7 +65,7 @@ function unregisterFileAssociation() {
 
 let mainWindow;
 let imageEntries;
-let pendingBook;
+let pending;
 let rendererReady = false;
 
 app.on("ready", () => {
@@ -72,6 +83,7 @@ app.on("ready", () => {
     }
 
     const cbzPath = args.find(a => a.endsWith(".cbz"));
+    const imagePath = args.find(a => /\.(jpe?g|png|gif|webp|avif)$/i.test(a));
 
     mainWindow = new BrowserWindow({
         width: 800, height: 600,
@@ -82,7 +94,7 @@ app.on("ready", () => {
     });
 
     mainWindow.loadFile("index.html");
-    mainWindow.setMenu(null);
+    // mainWindow.setMenu(null);
     mainWindow.webContents.insertCSS(`
         body::-webkit-scrollbar { display: none; }
     `);
@@ -92,36 +104,32 @@ app.on("ready", () => {
     });
 
     if (cbzPath) {
-        prepareBook(cbzPath);
+        prepare(cbzPath);
+    } else if (imagePath) {
+        prepare(imagePath, true);
     }
 });
 
-app.on('close', (event) => {
-    BrowserWindow.getAllWindows().forEach(window => {
-        if (!window.isDestroyed()) {
-            window.close();
-        }
-    });
-});
-
-ipcMain.on("renderer-ready", () => {
-    rendererReady = true;
-    if (pendingBook) {
-        mainWindow.webContents.send("show-images", pendingBook);
-        pendingBook = null;
-    }
+ipcMain.on("open-image", async (event, imagePath) => {
+    prepare(imagePath, isImage = true);
 });
 
 ipcMain.on("open-cbz", async (event, cbzPath) => {
-    prepareBook(cbzPath);
+    prepare(cbzPath);
 });
 
-ipcMain.on("request-page", async (event, { cbzPath, index }) => {
+ipcMain.on("request-page", async (event, { filePath, index }) => {
     try {
         // console.log("request-page", cbzPath, index);
-        const entries = imageEntries || await getImageEntries(cbzPath);
+        if (filePath && /\.(jpe?g|png|gif|webp|avif)$/i.test(filePath)) {
+            const image = await loadSingleImage(filePath);
+            event.sender.send("page-loaded", image);
+            return;
+        }
+
+        const entries = imageEntries || await getImageEntries(filePath);
         if (index < entries.length) {
-            const image = await loadImageByIndex(cbzPath, entries[index], index);
+            const image = await loadImageByIndex(filePath, entries[index], index);
             event.sender.send("page-loaded", image);
         }
     } catch (err) {
@@ -129,21 +137,45 @@ ipcMain.on("request-page", async (event, { cbzPath, index }) => {
     }
 });
 
-async function prepareBook(cbzPath) {
+async function prepare(filePath, isImage = false) {
     try {
-        imageEntries = await getImageEntries(cbzPath);
+        let total;
+        filePath = path.resolve(filePath);
+
+        if (isImage) {
+            total = 1;
+        } else {
+            imageEntries = await getImageEntries(filePath);
+            total = imageEntries.length;
+        }
 
         if (rendererReady) {
-            mainWindow.webContents.send("show-images", {
-                cbzPath,
-                total: imageEntries.length
-            });
+            mainWindow.webContents.send("show-images", { filePath, total, isImage });
         } else {
-            pendingBook = { cbzPath, total: imageEntries.length };
+            pending = { filePath, total, isImage };
         }
     } catch (err) {
         console.error(err);
     }
+}
+
+async function loadSingleImage(imagePath) {
+    return new Promise((resolve, reject) => {
+        if (!imagePath || !fs.existsSync(imagePath)) {
+            return reject(new Error("Invalid image path"));
+        }
+
+        fs.readFile(imagePath, (err, buffer) => {
+            if (err) return reject(err);
+
+            resolve({
+                buffer: buffer,
+                ext: path.extname(imagePath).slice(1),
+                fileName: path.basename(imagePath),
+                pageNumber: 0
+            });
+        });
+    });
 }
 
 async function getImageEntries(cbzPath) {
@@ -177,8 +209,6 @@ async function getImageEntries(cbzPath) {
         });
     });
 }
-
-// electron is suck
 
 async function loadImageByIndex(cbzPath, entry, index) {
     return new Promise((resolve, reject) => {
@@ -219,3 +249,19 @@ async function loadImageByIndex(cbzPath, entry, index) {
         });
     });
 }
+
+app.on('close', (event) => {
+    BrowserWindow.getAllWindows().forEach(window => {
+        if (!window.isDestroyed()) {
+            window.close();
+        }
+    });
+});
+
+ipcMain.on("renderer-ready", () => {
+    rendererReady = true;
+    if (pending) {
+        mainWindow.webContents.send("show-images", pending);
+        pending = null;
+    }
+});

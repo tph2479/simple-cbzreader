@@ -22,7 +22,7 @@
   "build": {
     "appId": "me.local.cbzreader",
     "compression": "maximum",
-    "asar": true,
+    "asar": false,
     "win": {
       "target": "dir",
       "artifactName": "${name}-${version}-${arch}.${ext}",

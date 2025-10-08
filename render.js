@@ -1,5 +1,4 @@
-const { ipcRenderer } = require("electron");
-const { webUtils } = require("electron");
+const { ipcRenderer, webUtils } = require("electron");
 
 const container = document.getElementById("container");
 const pageCounter = document.getElementById("page-counter");
@@ -8,7 +7,7 @@ const fileNameElement = document.getElementById('file-name');
 const navBar = document.getElementById('nav-bar');
 
 
-let cbzPath;
+let filePath;
 let totalPages;
 let currentPage;
 let loadedPages;
@@ -151,7 +150,7 @@ function updatePage() {
 
 // Lazy load logic
 function ensurePages() {
-  if (!cbzPath) return;
+  if (!filePath) return;
 
   try {
     const min = Math.max(0, currentPage - Math.floor(WINDOW_SIZE / 2));
@@ -159,7 +158,7 @@ function ensurePages() {
 
     for (let i = min; i <= max; i++) {
       if (!loadedPages.has(i)) {
-        ipcRenderer.send("request-page", { cbzPath, index: i });
+        ipcRenderer.send("request-page", { filePath, index: i });
       }
     }
 
@@ -223,18 +222,18 @@ function cleanup() {
   ipcRenderer.removeAllListeners("page-loaded");
 }
 
-ipcRenderer.on("show-images", (e, images) => {
+ipcRenderer.on("show-images", (e, file) => {
   clearImages();
 
-  cbzPath = images.cbzPath;
-  totalPages = images.total;
+  filePath = file.filePath;
+  totalPages = file.total;
 
-  document.title = cbzPath;
+  document.title = filePath;
   navBar.classList.add('has-file');
-  fileNameElement.textContent = cbzPath.split(/[/\\]/).pop().split('.')[0];
+  fileNameElement.textContent = filePath.split(/[/\\]/).pop().split('.')[0];
 
   for (let i = 0; i < Math.min(WINDOW_SIZE, totalPages); i++) {
-    ipcRenderer.send("request-page", { cbzPath, index: i });
+    ipcRenderer.send("request-page", { filePath, index: i });
   }
 });
 
@@ -253,9 +252,23 @@ window.addEventListener("drop", e => {
   e.stopPropagation();
   if (e.dataTransfer.files.length) {
     const file = e.dataTransfer.files[0];
+    const fullPath = webUtils.getPathForFile(file);
+    
+    // Kiểm tra file CBZ
     if (file.name.endsWith(".cbz")) {
-      const fullPath = webUtils.getPathForFile(file);
       ipcRenderer.send("open-cbz", fullPath);
+    } 
+    // Kiểm tra file ảnh
+    else if (/\.(jpe?g|png|gif|webp|avif)$/i.test(file.name)) {
+      console.log("Image file dropped:", fullPath);
+      console.log("File name:", file.name);
+      console.log("File type:", file.type);
+      console.log("File size:", file.size, "bytes");
+      ipcRenderer.send("open-image", fullPath);
+    }
+    // File không hợp lệ
+    else {
+      console.log("Unsupported file type:", file.name);
     }
   }
 });
