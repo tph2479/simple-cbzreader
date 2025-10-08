@@ -13,27 +13,30 @@ let currentPage;
 let loadedPages;
 const WINDOW_SIZE = 10;
 
+let currentZoom = 1;
+let isSingleImageMode = false;
+
 // Track all created URLs for cleanup
 const activeUrls = new Set();
 
 // Track scroll/resize listeners for cleanup
 let scrollHandler, resizeHandler;
 
-// Clear container
 function clearImages() {
-  // Revoke all active URLs
   for (const url of activeUrls) {
     URL.revokeObjectURL(url);
   }
   activeUrls.clear();
 
-  // Clear DOM
   container.innerHTML = "";
+  container.classList.remove('single-image-mode');
+  currentZoom = 1;
+  isSingleImageMode = false;
   loadedPages = new Map();
   currentPage = 0;
   totalPages = 0;
   document.title = "CBZ Reader";
-  fileNameElement.textContent = 'Press O or drag cbz, avif, jpg, png, gif file to this windows to view';
+  fileNameElement.textContent = 'O(Open). Q(Quit). Drag cbz, avif, jpg, png, gif file to this windows to view';
   navBar.classList.remove('has-file');
   pageCounter.textContent = "0/0";
 }
@@ -180,9 +183,36 @@ function ensurePages() {
   }
 }
 
-// Setup event listeners with cleanup tracking
+ipcRenderer.on("show-images", (e, file) => {
+  clearImages();
+
+  filePath = file.filePath;
+  totalPages = file.total;
+
+  document.title = filePath;
+  navBar.classList.add('has-file');
+  fileNameElement.textContent = filePath.split(/[/\\]/).pop().split('.')[0];
+
+  if (file.isImage && totalPages === 1) {
+    container.classList.add('single-image-mode');
+    isSingleImageMode = true;
+    currentZoom = 1;
+  } else {
+    container.classList.remove('single-image-mode');
+    isSingleImageMode = false;
+  }
+
+  for (let i = 0; i < Math.min(WINDOW_SIZE, totalPages); i++) {
+    ipcRenderer.send("request-page", { filePath, index: i });
+  }
+});
+
+ipcRenderer.on("page-loaded", (e, image) => {
+  addImage(image);
+  updatePage();
+});
+
 function setupEventListeners() {
-  // Remove old listeners if they exist
   if (scrollHandler) {
     window.removeEventListener("scroll", scrollHandler);
   }
@@ -190,16 +220,15 @@ function setupEventListeners() {
     window.removeEventListener("resize", resizeHandler);
   }
 
-  // Create new handlers
   scrollHandler = updatePage;
   resizeHandler = updatePage;
 
-  // Add listeners
   window.addEventListener("scroll", scrollHandler, { passive: true });
   window.addEventListener("resize", resizeHandler);
 }
 
-// Cleanup function
+setupEventListeners();
+
 function cleanup() {
   clearImages();
 
@@ -217,28 +246,8 @@ function cleanup() {
   ipcRenderer.removeAllListeners("page-loaded");
 }
 
-ipcRenderer.on("show-images", (e, file) => {
-  clearImages();
-
-  filePath = file.filePath;
-  totalPages = file.total;
-
-  document.title = filePath;
-  navBar.classList.add('has-file');
-  fileNameElement.textContent = filePath.split(/[/\\]/).pop().split('.')[0];
-
-  for (let i = 0; i < Math.min(WINDOW_SIZE, totalPages); i++) {
-    ipcRenderer.send("request-page", { filePath, index: i });
-  }
-});
-
-ipcRenderer.on("page-loaded", (e, image) => {
-  addImage(image);
-  updatePage();
-});
-
-// Setup event listeners
-setupEventListeners();
+window.addEventListener("beforeunload", cleanup);
+window.addEventListener("unload", cleanup);
 
 // Drag & drop file
 window.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); });
@@ -251,7 +260,7 @@ window.addEventListener("drop", e => {
 
     if (file.name.endsWith(".cbz")) {
       ipcRenderer.send("open-cbz", fullPath);
-    } 
+    }
 
     else if (/\.(jpe?g|png|gif|webp|avif)$/i.test(file.name)) {
       ipcRenderer.send("open-image", fullPath);
@@ -260,9 +269,5 @@ window.addEventListener("drop", e => {
     }
   }
 });
-
-// Cleanup on page unload
-window.addEventListener("beforeunload", cleanup);
-window.addEventListener("unload", cleanup);
 
 ipcRenderer.send("renderer-ready");

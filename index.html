@@ -17,6 +17,17 @@
       width: 100%;
       margin: 0;
       padding: 0;
+      cursor: grab;
+      overflow: auto;
+    }
+
+    #container.grabbing {
+      cursor: grabbing;
+    }
+
+    #container img {
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
     img {
@@ -96,6 +107,21 @@
       height: 100%;
       background: white;
       width: 0;
+    }
+
+    .single-image-mode {
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      height: 100vh !important;
+      overflow: auto !important;
+    }
+
+    .single-image-mode img {
+      height: 100vh;
+      width: auto;
+      max-width: 100vw;
+      object-fit: contain;
     }
   </style>
 </head>

@@ -67,7 +67,6 @@ let mainWindow;
 let imageEntries;
 let pending;
 let rendererReady = false;
-let cachedZipfile = null;
 
 app.on("ready", () => {
     const args = process.argv.slice(1);
