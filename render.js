@@ -33,7 +33,7 @@ function clearImages() {
   currentPage = 0;
   totalPages = 0;
   document.title = "CBZ Reader";
-  fileNameElement.textContent = 'No file selected please drag cbz file to this windows to open';
+  fileNameElement.textContent = 'Press O or drag cbz, avif, jpg, png, gif file to this windows to view';
   navBar.classList.remove('has-file');
   pageCounter.textContent = "0/0";
 }
@@ -65,7 +65,6 @@ function addImage(image) {
   img.src = url;
   img.dataset.pageIndex = image.pageNumber.toString();
 
-  // Safer cleanup with try-catch
   const cleanup = () => {
     try {
       revokeTrackedURL(url);
@@ -77,7 +76,6 @@ function addImage(image) {
   img.onload = cleanup;
   img.onerror = cleanup;
 
-  // Fallback cleanup after timeout (in case onload/onerror never fire)
   setTimeout(() => {
     if (activeUrls.has(url)) {
       console.warn('URL not revoked after 30s, force cleanup:', url);
@@ -86,7 +84,6 @@ function addImage(image) {
   }, 10000);
 
   try {
-    // tìm đúng vị trí để insert
     let inserted = false;
     for (const child of container.children) {
       const childPageIndex = parseInt(child.dataset.pageIndex, 10);
@@ -106,15 +103,13 @@ function addImage(image) {
     }
 
     loadedPages.set(image.pageNumber, img);
-    // console.log(image.pageNumber, image.fileName);
 
   } catch (error) {
     console.error('Error adding image to DOM:', error);
-    cleanup(); // Cleanup on error
+    cleanup();
   }
 }
 
-// Update indicator
 function updatePage() {
   try {
     const imgElements = container.querySelectorAll("img");
@@ -253,21 +248,14 @@ window.addEventListener("drop", e => {
   if (e.dataTransfer.files.length) {
     const file = e.dataTransfer.files[0];
     const fullPath = webUtils.getPathForFile(file);
-    
-    // Kiểm tra file CBZ
+
     if (file.name.endsWith(".cbz")) {
       ipcRenderer.send("open-cbz", fullPath);
     } 
-    // Kiểm tra file ảnh
+
     else if (/\.(jpe?g|png|gif|webp|avif)$/i.test(file.name)) {
-      console.log("Image file dropped:", fullPath);
-      console.log("File name:", file.name);
-      console.log("File type:", file.type);
-      console.log("File size:", file.size, "bytes");
       ipcRenderer.send("open-image", fullPath);
-    }
-    // File không hợp lệ
-    else {
+    } else {
       console.log("Unsupported file type:", file.name);
     }
   }

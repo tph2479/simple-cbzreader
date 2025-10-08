@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, globalShortcut, dialog } = require("electron");
 const path = require("path");
 const yauzl = require("yauzl");
 const fs = require("fs");
@@ -67,6 +67,7 @@ let mainWindow;
 let imageEntries;
 let pending;
 let rendererReady = false;
+let cachedZipfile = null;
 
 app.on("ready", () => {
     const args = process.argv.slice(1);
@@ -103,6 +104,25 @@ app.on("ready", () => {
         app.quit();
     });
 
+    globalShortcut.register('o', async () => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            filters: [
+                { name: 'Images and CBZ', extensions: ['cbz', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'] }
+            ]
+        });
+
+        if (!result.canceled && result.filePaths.length > 0) {
+            const filePath = result.filePaths[0];
+
+            if (filePath.endsWith(".cbz")) {
+                prepare(filePath);
+            } else if (/\.(jpe?g|png|gif|webp|avif)$/i.test(filePath)) {
+                prepare(filePath, true);
+            }
+        }
+    });
+
     if (cbzPath) {
         prepare(cbzPath);
     } else if (imagePath) {
@@ -120,7 +140,6 @@ ipcMain.on("open-cbz", async (event, cbzPath) => {
 
 ipcMain.on("request-page", async (event, { filePath, index }) => {
     try {
-        // console.log("request-page", cbzPath, index);
         if (filePath && /\.(jpe?g|png|gif|webp|avif)$/i.test(filePath)) {
             const image = await loadSingleImage(filePath);
             event.sender.send("page-loaded", image);
@@ -182,7 +201,7 @@ async function getImageEntries(cbzPath) {
     if (!cbzPath || !fs.existsSync(cbzPath)) {
         throw new Error("Invalid CBZ path");
     }
-    cbzPath = path.resolve(cbzPath);
+
     return new Promise((resolve, reject) => {
         yauzl.open(cbzPath, { lazyEntries: true }, (err, zipfile) => {
             if (err) return reject(err);
